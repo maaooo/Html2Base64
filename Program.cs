@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Security.AccessControl;
 
 namespace Html2Base64
 {
@@ -38,13 +39,13 @@ namespace Html2Base64
         static string MainhtmlStr;
         static void Main(string[] args)
         {
-            // var str = ReadRootHtml("C:\\PC_Fanke\\login.html");C:\PC_Fanke\login.html
+            // var str = ReadRootHtml("C:\\PC_Fanke\\login.html");H:\MAO\html\PC_Fanke\login.html
             //  Console.WriteLine(str);
             //  var test=str.IndexOf("星云鼠标跟随");
             // Console.WriteLine("\n");
             //    Console.WriteLine(test);
 
-
+            CreateTargetDir();
             Console.WriteLine("请输入html文件路径。。。");
           tag1:
             string srtpath = Console.ReadLine();
@@ -53,7 +54,7 @@ namespace Html2Base64
                 Console.WriteLine("文件错误-->不是html文件,请输入正确的文件路径：");
                 goto tag1;
             }
-            MainhtmlStr = ReadFileforGb2312(srtpath);//用于查找
+            MainhtmlStr = ReadFileforUtf8(srtpath);//用于查找
             SourceDir =Path.GetDirectoryName(srtpath);
             try
             {
@@ -66,12 +67,16 @@ namespace Html2Base64
 
             for(int i=0;i< fileDataLsit.Count;i++)
             {
-                string base64 = string2Base64(MainhtmlStr, fileDataLsit[i].ExtName);
-                string test = myReplace(MainhtmlStr, fileDataLsit[i].findPath, base64);//忽略大小写的替换函数
-                Console.WriteLine(test);
+                string base64 = string2Base64(fileDataLsit[i].replaceText, fileDataLsit[i].ExtName);
+                 MainhtmlStr = myReplace(MainhtmlStr, fileDataLsit[i].findPath, base64);//忽略大小写的替换函数
+               // Console.WriteLine(MainhtmlStr);
+                
             }
-            
-            
+            SaveToFile(MainhtmlStr);
+            SaveMainHtmlToFile(MainhtmlStr);
+            //SaveToFile(MainhtmlStr);
+            Console.WriteLine("完成");
+            Console.ReadLine();
             //var htmlStr = ReadRootHtml(srtpath);
         }
 
@@ -80,15 +85,15 @@ namespace Html2Base64
             System.IO.FileStream fs = System.IO.File.OpenRead(path); 
             System.IO.StreamReader br = new StreamReader(fs, Encoding.GetEncoding("utf-8"));
             string str = br.ReadToEnd();
-            byte[] b = Encoding.Default.GetBytes(str);
+            //byte[] b = Encoding.Default.GetBytes(str);
             
            // string str = System.Text.Encoding.Default.GetString(bt);
             br.Close();
             fs.Close();
-           // byte[] src = Encoding.UTF8.GetBytes(str);
+            // byte[] src = Encoding.UTF8.GetBytes(str);
             //byte[] des = Encoding.Convert(Encoding.UTF8, Encoding.GetEncoding("gb2312"), src);
-            
-            return Convert.ToBase64String(b);
+
+            return str;//Convert.ToBase64String(b);
         }
         public static string ReadFileforGb2312(string path)
         {
@@ -108,10 +113,65 @@ namespace Html2Base64
 
         static void CreateTargetDir()
         {
-            if(Directory.Exists(TargetDir))
+            if(!Directory.Exists(TargetDir))
                     Directory.CreateDirectory(TargetDir);
         }
- 
+
+        static void SaveToFile(string content)
+        {
+         
+            System.IO.File.WriteAllText(TargetDir+@"\test1.txt", content, Encoding.UTF8);
+        }
+        static void SaveMainHtmlToFile(string content)
+        {
+            string b64= "data:text/html;base64,"+ Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
+           
+            string name = "const std::string Str";
+
+            string test="";
+            string constr = "";
+
+           // int s = b64.Length / 65000;//65535  H:\MAO\html\PC_Fanke\login.html
+            int i = 0;
+            while (true)
+            {
+                if(b64.Equals(""))break;
+                test = "";
+                string str65000="";
+                if (b64.Length<=65000)
+                {
+                    str65000 = b64;
+                    b64 = "";
+                }   
+                else
+                {
+                    str65000 = b64.Substring(0, 65000);
+                    b64 = b64.Remove(0, 65000);
+                }
+
+                while (true)
+                {
+                    if (str65000.Length <= 300) { test += "\"" + str65000 + "\""; break; }
+                    test += "\"" + str65000.Substring(0, 300) + "\"\\" + "\r\n";
+                    str65000 = str65000.Remove(0, 300);
+                }
+
+                constr += name+i+"=" + test + ";\r\n";
+                i++;
+//                 if (b64.Length <= 65000)
+//                 {
+//                     constr += name + (i+1) + "=\"" + b64 + "\";\r\n";
+//                 }
+            }
+            
+
+
+
+
+
+            System.IO.File.WriteAllText(TargetDir + @"\mainhtml.txt", constr, Encoding.Default);
+        }
+
 
         static string string2Base64(string str ,string fileExtName)
         {
@@ -121,11 +181,11 @@ namespace Html2Base64
             string base64String="";
             if (fileExtName.Equals(".css"))
             {
-                base64String = "data:text/css;base64," + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes(str));
+                base64String = "data:text/css;base64," + Convert.ToBase64String(System.Text.Encoding.Default.GetBytes(str));
             }
             if (fileExtName.Equals(".js"))
             {
-                base64String = "data:text/javascript;base64," + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes(str));
+                base64String = "data:text/javascript;base64," + Convert.ToBase64String(System.Text.Encoding.Default.GetBytes(str));
             }
             if(base64String.Equals(""))
                 Console.WriteLine("警告--->string2Base64f 返回空");
@@ -141,13 +201,11 @@ namespace Html2Base64
         public static void FilterFile(string filepath)
         {
             string str=  Path.GetExtension(filepath).ToLower();
-            if(str.Equals(".css"))
+            if(str.Equals(".css") || str.Equals(".js"))//|| str.Equals(".js"
             {
                 var fd = new fileData(filepath);
                 fileDataLsit.Add(fd);
-                //Console.WriteLine(str);
             }
-           
         }
         /// <summary>
         /// 忽略大小写的替换函数
