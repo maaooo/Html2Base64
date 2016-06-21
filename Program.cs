@@ -15,7 +15,7 @@ namespace Html2Base64
             ExtName = Path.GetExtension(path).ToLower();
             findPath = path.Substring(Program.SourceDir.Length+1, path.Length- Program.SourceDir.Length-1);
             replaceFXG();
-            replaceText = Program.ReadFileforUtf8(path);
+            replaceText = Program.ReadFileforUtf8Base64(path);
 
           //  Console.WriteLine(findPath + "--->" + replaceText) ;
         }
@@ -46,7 +46,7 @@ namespace Html2Base64
             //    Console.WriteLine(test);
 
             CreateTargetDir();
-            Console.WriteLine("请输入html文件路径。。。");
+            Console.WriteLine("请输入html文件路径:");
           tag1:
             string srtpath = Console.ReadLine();
             if (!File.Exists(srtpath))
@@ -54,7 +54,7 @@ namespace Html2Base64
                 Console.WriteLine("文件错误-->不是html文件,请输入正确的文件路径：");
                 goto tag1;
             }
-            MainhtmlStr = ReadFileforUtf8(srtpath);//用于查找
+            MainhtmlStr = ReadFileforUtf8Stream(srtpath);//用于查找
             SourceDir =Path.GetDirectoryName(srtpath);
             try
             {
@@ -67,7 +67,7 @@ namespace Html2Base64
 
             for(int i=0;i< fileDataLsit.Count;i++)
             {
-                string base64 = string2Base64(fileDataLsit[i].replaceText, fileDataLsit[i].ExtName);
+                string base64 = mate(fileDataLsit[i].replaceText, fileDataLsit[i].ExtName);
                  MainhtmlStr = myReplace(MainhtmlStr, fileDataLsit[i].findPath, base64);//忽略大小写的替换函数
                // Console.WriteLine(MainhtmlStr);
                 
@@ -80,12 +80,12 @@ namespace Html2Base64
             //var htmlStr = ReadRootHtml(srtpath);
         }
 
-        public static string ReadFileforUtf8(string path)
+        public static string ReadFileforUtf8Base64(string path)
         {
             System.IO.FileStream fs = System.IO.File.OpenRead(path); 
             System.IO.StreamReader br = new StreamReader(fs, Encoding.GetEncoding("utf-8"));
             string str = br.ReadToEnd();
-            //byte[] b = Encoding.Default.GetBytes(str);
+            byte[] b = Encoding.UTF8.GetBytes(str);
             
            // string str = System.Text.Encoding.Default.GetString(bt);
             br.Close();
@@ -93,9 +93,9 @@ namespace Html2Base64
             // byte[] src = Encoding.UTF8.GetBytes(str);
             //byte[] des = Encoding.Convert(Encoding.UTF8, Encoding.GetEncoding("gb2312"), src);
 
-            return str;//Convert.ToBase64String(b);
+            return Convert.ToBase64String(b);
         }
-        public static string ReadFileforGb2312(string path)
+        public static string ReadFileforUtf8Stream(string path)
         {
             System.IO.FileStream fs = System.IO.File.OpenRead(path);
             System.IO.StreamReader br = new StreamReader(fs, Encoding.GetEncoding("utf-8"));
@@ -103,10 +103,10 @@ namespace Html2Base64
             //string str = System.Text.Encoding.Default.GetString(bt);
             br.Close();
             fs.Close();
-            byte[] src = Encoding.UTF8.GetBytes(str);
-            byte[] des = Encoding.Convert(Encoding.UTF8, Encoding.GetEncoding("gb2312"), src);
+            //byte[] src = Encoding.UTF8.GetBytes(str);
+            //byte[] des = Encoding.Convert(Encoding.UTF8, Encoding.GetEncoding("gb2312"), src);
 
-            return System.Text.Encoding.ASCII.GetString(des);
+            return str;
         }
         public static string TargetDir = "c:\\base64_file";
         public static string SourceDir = "";
@@ -119,12 +119,12 @@ namespace Html2Base64
 
         static void SaveToFile(string content)
         {
-         
             System.IO.File.WriteAllText(TargetDir+@"\test1.txt", content, Encoding.UTF8);
         }
         static void SaveMainHtmlToFile(string content)
         {
-            string b64= "data:text/html;base64,"+ Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
+            System.IO.File.WriteAllText(TargetDir + @"\No64_mainhtml.html", content, Encoding.UTF8);
+            string b64= "data:text/html;charset=UTF-8;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
            
             string name = "const std::string Str";
 
@@ -133,7 +133,7 @@ namespace Html2Base64
 
            // int s = b64.Length / 65000;//65535  H:\MAO\html\PC_Fanke\login.html
             int i = 0;
-            while (true)
+            while (true)//vs2015 c++ 无法容纳单个变量65535个字符， 达到
             {
                 if(b64.Equals(""))break;
                 test = "";
@@ -158,10 +158,7 @@ namespace Html2Base64
 
                 constr += name+i+"=" + test + ";\r\n";
                 i++;
-//                 if (b64.Length <= 65000)
-//                 {
-//                     constr += name + (i+1) + "=\"" + b64 + "\";\r\n";
-//                 }
+
             }
             
 
@@ -173,7 +170,7 @@ namespace Html2Base64
         }
 
 
-        static string string2Base64(string str ,string fileExtName)
+        static string mate(string base64str ,string fileExtName)
         {
             //System.IO.FileStream fs = System.IO.File.OpenRead(path);
             //System.IO.BinaryReader br = new BinaryReader(fs);
@@ -181,11 +178,11 @@ namespace Html2Base64
             string base64String="";
             if (fileExtName.Equals(".css"))
             {
-                base64String = "data:text/css;base64," + Convert.ToBase64String(System.Text.Encoding.Default.GetBytes(str));
+                base64String = "data:text/css;charset=UTF-8;base64," + base64str;
             }
             if (fileExtName.Equals(".js"))
             {
-                base64String = "data:text/javascript;base64," + Convert.ToBase64String(System.Text.Encoding.Default.GetBytes(str));
+                base64String = "data:text/javascript;charset=UTF-8;base64," + base64str;
             }
             if(base64String.Equals(""))
                 Console.WriteLine("警告--->string2Base64f 返回空");
