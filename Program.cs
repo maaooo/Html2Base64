@@ -125,7 +125,7 @@ namespace Html2Base64
         {
             System.IO.File.WriteAllText(TargetDir + @"\No64_mainhtml.html", content, Encoding.UTF8);
             string b64= "data:text/html;charset=UTF-8;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
-           
+            System.IO.File.WriteAllText(TargetDir + @"\Bs64_mainhtml.txt", b64, Encoding.UTF8);
             string name = "const std::string Str";
 
             string test="";
