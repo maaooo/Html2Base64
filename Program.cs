@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Security.AccessControl;
+ 
 
 namespace Html2Base64
 {
@@ -14,20 +15,37 @@ namespace Html2Base64
             filePath = path;
             ExtName = Path.GetExtension(path).ToLower();
             findPath = path.Substring(Program.SourceDir.Length+1, path.Length- Program.SourceDir.Length-1);
-            replaceFXG();
-            replaceText = Program.ReadFileforUtf8Base64(path);
-
+            replaceFXG();//替换成/  方便查找
+            if (ExtName.Equals(".css"))
+                GetCssText();
+            else
+                replaceText = Program.ReadFileforUtf8Base64(path);
+            if (ExtName.Equals(".png")|| ExtName.Equals(".woff")|| ExtName.Equals(".ttf"))
+            {
+                findImagePath_1 = "../" + findPath;
+            }
           //  Console.WriteLine(findPath + "--->" + replaceText) ;
         }
-        public string filename;
+        public string filename;//
         public string ExtName;
         public string filePath;
         public string findPath;
         public string replaceText;
-        
+        public string CssText;
+
+        public string findImagePath_1;
+
         public void  replaceFXG()
         {
-            findPath=Program.myReplace(findPath, "\\", "/");
+            bool isok = false;
+            findPath=Program.myReplace(findPath, "\\", "/",ref isok);
+        }
+
+        public void GetCssText()
+        {
+            CssText= Program.ReadFileforUtf8Stream(filePath);
+         
+               
         }
     }
 
@@ -47,13 +65,17 @@ namespace Html2Base64
 
             CreateTargetDir();
             Console.WriteLine("请输入html文件路径:");
-          tag1:
-            string srtpath = Console.ReadLine();
+            tag1:
+            // string srtpath = Console.ReadLine();
+
+            string srtpath = "C:\\PC_Fanke\\login.html"; // Debug 时使用
+
             if (!File.Exists(srtpath))
             {
                 Console.WriteLine("文件错误-->不是html文件,请输入正确的文件路径：");
                 goto tag1;
             }
+            
             MainhtmlStr = ReadFileforUtf8Stream(srtpath);//用于查找
             SourceDir =Path.GetDirectoryName(srtpath);
             try
@@ -64,12 +86,56 @@ namespace Html2Base64
             {
                 Console.WriteLine(e.Message);
             }
-
-            for(int i=0;i< fileDataLsit.Count;i++)
+            //合成css(png和font部分)
+            for(int i = 0; i < fileDataLsit.Count; i++)
             {
-                string base64 = mate(fileDataLsit[i].replaceText, fileDataLsit[i].ExtName);
-                 MainhtmlStr = myReplace(MainhtmlStr, fileDataLsit[i].findPath, base64);//忽略大小写的替换函数
-               // Console.WriteLine(MainhtmlStr);
+                if(fileDataLsit[i].ExtName.Equals(".css"))
+                {
+                    string cssText = fileDataLsit[i].CssText;//提取css文本，准备用base64替换 里面的图片
+                    for (int k = 0; k < fileDataLsit.Count; k++)
+                    {
+                        if(fileDataLsit[k].ExtName.Equals(".png"))
+                        {
+                            string Imgbase64 = mate(fileDataLsit[k].replaceText, fileDataLsit[k].ExtName);//得到base64
+                            bool isok = false;
+                            cssText = myReplace(cssText, fileDataLsit[k].findImagePath_1, Imgbase64,ref isok);//忽略大小写的替换函数
+                            if (isok == false)
+                                cssText = myReplace(cssText, fileDataLsit[k].findPath, Imgbase64, ref isok);
+                        }
+                        if (fileDataLsit[k].ExtName.Equals(".woff"))
+                        {
+                            string Imgbase64 = mate(fileDataLsit[k].replaceText, fileDataLsit[k].ExtName);//得到base64
+                            bool isok = false;
+                            cssText = myReplace(cssText, fileDataLsit[k].findImagePath_1, Imgbase64, ref isok);//忽略大小写的替换函数
+                            if (isok == false)
+                                cssText = myReplace(cssText, fileDataLsit[k].findPath, Imgbase64, ref isok);
+                        }
+                        if (fileDataLsit[k].ExtName.Equals(".ttf"))
+                        {
+                            string Imgbase64 = mate(fileDataLsit[k].replaceText, fileDataLsit[k].ExtName);//得到base64
+                            bool isok = false;
+                            cssText = myReplace(cssText, fileDataLsit[k].findImagePath_1, Imgbase64, ref isok);//忽略大小写的替换函数
+                            if (isok == false)
+                                cssText = myReplace(cssText, fileDataLsit[k].findPath, Imgbase64, ref isok);
+                        }
+                    }
+                    fileDataLsit[i].replaceText= Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(cssText));
+                }
+ 
+            }
+
+
+
+            //合成主文件
+            for (int i=0;i< fileDataLsit.Count;i++)
+            {
+                //查找到有 文件路径 用 base64替换掉   eg:background: url(../Image/关闭_默认.png);  "../Image/关闭_默认.png"被替换成base64
+
+                string base64 = mate(fileDataLsit[i].replaceText, fileDataLsit[i].ExtName);//得到base64
+                bool isok = false;
+                MainhtmlStr = myReplace(MainhtmlStr, fileDataLsit[i].findPath, base64,ref isok);//忽略大小写的替换函数
+                if(isok==false)
+                    Console.WriteLine("转换："+fileDataLsit[i].findPath+"失败");
                 
             }
             SaveToFile(MainhtmlStr);
@@ -82,10 +148,26 @@ namespace Html2Base64
 
         public static string ReadFileforUtf8Base64(string path)
         {
-            System.IO.FileStream fs = System.IO.File.OpenRead(path); 
-            System.IO.StreamReader br = new StreamReader(fs, Encoding.GetEncoding("utf-8"));
-            string str = br.ReadToEnd();
-            byte[] b = Encoding.UTF8.GetBytes(str);
+            var ext = Path.GetExtension(path);
+            if (ext.ToLower().Equals(".png"))
+            {
+                System.Drawing.Image fromImage = System.Drawing.Image.FromFile(path);
+                MemoryStream stream = new MemoryStream();
+                fromImage.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+               return Convert.ToBase64String(stream.GetBuffer());
+            }
+                
+            
+
+
+                
+            System.IO.FileStream fs = System.IO.File.OpenRead(path);
+            System.IO.StreamReader br;
+
+            br = new StreamReader(fs, Encoding.GetEncoding("utf-8"));
+            string str= br.ReadToEnd();
+            byte[] b;
+                b = Encoding.UTF8.GetBytes(str);
             
            // string str = System.Text.Encoding.Default.GetString(bt);
             br.Close();
@@ -124,14 +206,16 @@ namespace Html2Base64
         static void SaveMainHtmlToFile(string content)
         {
             System.IO.File.WriteAllText(TargetDir + @"\No64_mainhtml.html", content, Encoding.UTF8);
-            string b64= "data:text/html;charset=UTF-8;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
-           
+           // string b64= "data:text/html;charset=UTF-8;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
+            string b64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
+            System.IO.File.WriteAllText(TargetDir + @"\Bs64_mainhtml.html", b64, Encoding.UTF8);
+
             string name = "const std::string Str";
 
             string test="";
             string constr = "";
 
-           // int s = b64.Length / 65000;//65535  H:\MAO\html\PC_Fanke\login.html
+            // int s = b64.Length / 65000;//65535  H:\MAO\html\PC_Fanke\login.html  C:\PC_Fanke\login.html
             int i = 0;
             while (true)//vs2015 c++ 无法容纳单个变量65535个字符， 达到
             {
@@ -155,20 +239,13 @@ namespace Html2Base64
                     test += "\"" + str65000.Substring(0, 300) + "\"\\" + "\r\n";
                     str65000 = str65000.Remove(0, 300);
                 }
-
                 constr += name+i+"=" + test + ";\r\n";
                 i++;
-
             }
-            
-
-
-
-
-
             System.IO.File.WriteAllText(TargetDir + @"\mainhtml.txt", constr, Encoding.Default);
         }
 
+        //static string css_mate()
 
         static string mate(string base64str ,string fileExtName)
         {
@@ -176,6 +253,10 @@ namespace Html2Base64
             //System.IO.BinaryReader br = new BinaryReader(fs);
             //byte[] bt = br.ReadBytes(Convert.ToInt32(fs.Length));
             string base64String="";
+            if (fileExtName.Equals(".png"))
+            {
+                base64String = "data:image/png;charset=UTF-8;base64," + base64str;
+            }
             if (fileExtName.Equals(".css"))
             {
                 base64String = "data:text/css;charset=UTF-8;base64," + base64str;
@@ -184,7 +265,15 @@ namespace Html2Base64
             {
                 base64String = "data:text/javascript;charset=UTF-8;base64," + base64str;
             }
-            if(base64String.Equals(""))
+            if (fileExtName.Equals(".woff"))
+            {
+                base64String = "data:font/woff;charset=UTF-8;base64," + base64str;
+            }
+            if (fileExtName.Equals(".ttf"))
+            {
+                base64String = "data:font/ttf;charset=UTF-8;base64," + base64str;
+            }
+            if (base64String.Equals(""))
                 Console.WriteLine("警告--->string2Base64f 返回空");
             return base64String;
             //br.Close();
@@ -198,9 +287,10 @@ namespace Html2Base64
         public static void FilterFile(string filepath)
         {
             string str=  Path.GetExtension(filepath).ToLower();
-            if(str.Equals(".css") || str.Equals(".js"))//|| str.Equals(".js"
+            if(str.Equals(".css") || str.Equals(".js")|| str.Equals(".png") || str.Equals(".woff") || str.Equals(".ttf"))//|| str.Equals(".js"
             {
                 var fd = new fileData(filepath);
+                Console.WriteLine(filepath);
                 fileDataLsit.Add(fd);
             }
         }
@@ -211,7 +301,7 @@ namespace Html2Base64
         /// <param name="strRe">在文本中要替换的内容</param>
         /// <param name="strTo">替换值</param>
         /// <returns></returns>
-        public static string myReplace(string strSource, string strRe, string strTo)
+        public static string myReplace(string strSource, string strRe, string strTo, ref bool isReplaceOK)
         {
             string strSl, strRl;
             strSl = strSource.ToLower();
@@ -219,8 +309,12 @@ namespace Html2Base64
             int start = strSl.IndexOf(strRl);
             if (start != -1)
             {
+                isReplaceOK = true;
                 strSource = strSource.Substring(0, start) + strTo
-                + myReplace(strSource.Substring(start + strRe.Length), strRe, strTo);
+                + myReplace(strSource.Substring(start + strRe.Length), strRe, strTo,ref isReplaceOK);
+            }else
+            {
+                isReplaceOK = false;//没有找到相应的字符串  转换失败 
             }
             return strSource;
         }

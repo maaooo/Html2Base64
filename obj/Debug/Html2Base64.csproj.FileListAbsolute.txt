@@ -10,3 +10,9 @@ L:\C#\Html2Base64\obj\Debug\Html2Base64.pdb
 L:\C#\Html2Base64\bin\Debug\Html2Base64.exe
 L:\C#\Html2Base64\bin\Debug\Html2Base64.pdb
 L:\C#\Html2Base64\obj\Debug\Html2Base64.csprojResolveAssemblyReference.cache
+F:\C#\Html2Base64\bin\Debug\Html2Base64.exe.config
+F:\C#\Html2Base64\obj\Debug\Html2Base64.exe
+F:\C#\Html2Base64\obj\Debug\Html2Base64.pdb
+F:\C#\Html2Base64\bin\Debug\Html2Base64.exe
+F:\C#\Html2Base64\bin\Debug\Html2Base64.pdb
+F:\C#\Html2Base64\obj\Debug\Html2Base64.csprojResolveAssemblyReference.cache
