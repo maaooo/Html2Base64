@@ -206,10 +206,15 @@ namespace Html2Base64
         static void SaveMainHtmlToFile(string content)
         {
             System.IO.File.WriteAllText(TargetDir + @"\No64_mainhtml.html", content, Encoding.UTF8);
+<<<<<<< HEAD
            // string b64= "data:text/html;charset=UTF-8;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
             string b64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
             System.IO.File.WriteAllText(TargetDir + @"\Bs64_mainhtml.html", b64, Encoding.UTF8);
 
+=======
+            string b64= "data:text/html;charset=UTF-8;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(content));
+            System.IO.File.WriteAllText(TargetDir + @"\Bs64_mainhtml.txt", b64, Encoding.UTF8);
+>>>>>>> origin/master
             string name = "const std::string Str";
 
             string test="";
